@@ -1,0 +1,379 @@
+import { useEffect, useMemo, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  ArrowDownRight,
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  ChevronDown,
+  CircleArrowOutUpRight,
+  Clock3,
+  Instagram,
+  Menu,
+  MessageCircle,
+  Minus,
+  Plus,
+  X,
+} from "lucide-react";
+import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from "wouter";
+
+type Category = "Copos, taças e canecas" | "Chaveiros" | "Decoração e presentes" | "Mundo 3D";
+
+type Product = {
+  slug: string;
+  name: string;
+  category: Category;
+  note: string;
+  description: string;
+  details: string[];
+  image: string;
+  tone: string;
+  featured?: boolean;
+};
+
+const WHATSAPP = "5511987654321";
+const waLink = (message: string) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`;
+
+const products: Product[] = [
+  {
+    slug: "copo-acrilico-lia",
+    name: "Copo Lia",
+    category: "Copos, taças e canecas",
+    note: "Seu nome em uma cor que combina com você.",
+    description: "Copo acrílico transparente com tampa, canudo e nome personalizado em vinil.",
+    details: ["700 ml", "Tampa e canudo inclusos", "Nome em vinil de alta durabilidade"],
+    image: "/products/tumbler-lia.png",
+    tone: "coral",
+    featured: true,
+  },
+  {
+    slug: "tacas-brinde",
+    name: "Taças Brinde",
+    category: "Copos, taças e canecas",
+    note: "Para brindar uma história, não só uma data.",
+    description: "Par de taças acrílicas com aplicação delicada e composição feita sob medida.",
+    details: ["350 ml cada", "Kit com 2 unidades", "Aplicação personalizada"],
+    image: "/products/goblets.png",
+    tone: "butter",
+    featured: true,
+  },
+  {
+    slug: "caneca-nossa-mesa",
+    name: "Caneca Nossa Mesa",
+    category: "Copos, taças e canecas",
+    note: "A caneca de todo dia, com a sua cara.",
+    description: "Caneca acrílica leve para deixar café, chá ou presente ainda mais especial.",
+    details: ["450 ml", "Leve e resistente", "Consulte combinações de cores"],
+    image: "/products/tumbler-lia.png",
+    tone: "teal",
+    featured: true,
+  },
+  {
+    slug: "chaveiro-arco",
+    name: "Chaveiro Arco",
+    category: "Chaveiros",
+    note: "Pequeno no tamanho, gigante na personalidade.",
+    description: "Chaveiro 3D com formas arredondadas, produzido sob demanda em cores vibrantes.",
+    details: ["Impressão 3D", "Argola metálica inclusa", "Cores sob consulta"],
+    image: "/products/keychains.png",
+    tone: "coral",
+    featured: true,
+  },
+  {
+    slug: "chaveiro-inicial",
+    name: "Chaveiro Inicial",
+    category: "Chaveiros",
+    note: "A sua letra em um objeto para levar por aí.",
+    description: "Inicial personalizada em impressão 3D. Um mimo certeiro para pessoas e marcas.",
+    details: ["Inicial à escolha", "Impressão 3D", "A partir de 10 unidades"],
+    image: "/products/keychains.png",
+    tone: "butter",
+    featured: true,
+  },
+  {
+    slug: "vaso-onda",
+    name: "Vaso Onda",
+    category: "Decoração e presentes",
+    note: "Uma onda colorida para a estante.",
+    description: "Vaso decorativo com textura ondulada e desenho autoral da G72 Plastic.",
+    details: ["Impressão 3D", "Para folhagens secas", "Cores sob consulta"],
+    image: "/products/vase.png",
+    tone: "teal",
+    featured: true,
+  },
+  {
+    slug: "suporte-grao",
+    name: "Suporte Grão",
+    category: "Mundo 3D",
+    note: "Organização também pode ser divertida.",
+    description: "Peça funcional para mesa, bancada ou home office, impressa em PLA.",
+    details: ["PLA de origem vegetal", "Leve e funcional", "Desenho personalizado"],
+    image: "/products/vase.png",
+    tone: "coral",
+    featured: true,
+  },
+  {
+    slug: "topo-bolo-festa",
+    name: "Topo Festa",
+    category: "Decoração e presentes",
+    note: "O detalhe que faz a foto da festa.",
+    description: "Topo de bolo personalizado para celebrar do seu jeito, em acrílico ou 3D.",
+    details: ["Nome e idade à escolha", "Acrílico ou impressão 3D", "Feito para cada celebração"],
+    image: "/products/keychains.png",
+    tone: "butter",
+  },
+];
+
+const categories = [
+  { name: "Copos, taças e canecas" as Category, number: "01", label: "Para usar, presentear e brindar.", className: "category-coral" },
+  { name: "Chaveiros" as Category, number: "02", label: "Pequenos objetos, grandes ideias.", className: "category-butter" },
+  { name: "Decoração e presentes" as Category, number: "03", label: "Peças que deixam a casa sorrindo.", className: "category-teal" },
+  { name: "Mundo 3D" as Category, number: "04", label: "Do arquivo à peça, sem complicação.", className: "category-ink" },
+];
+
+function Meta({ title, description }: { title: string; description: string }) {
+  useEffect(() => {
+    document.title = title;
+    let tag = document.querySelector('meta[name="description"]');
+    if (!tag) {
+      tag = document.createElement("meta");
+      tag.setAttribute("name", "description");
+      document.head.appendChild(tag);
+    }
+    tag.setAttribute("content", description);
+  }, [title, description]);
+  return null;
+}
+
+function Header() {
+  const [location, setLocation] = useLocation();
+  const [open, setOpen] = useState(false);
+  const isCatalog = location.startsWith("/catalogo");
+  return (
+    <header className="site-header">
+      <div className="container header-inner">
+        <Link href="/" className="brand" aria-label="G72 Plastic, início" data-testid="link-brand">
+          <span className="brand-mark">G72</span>
+          <span className="brand-word">PLASTIC<span className="brand-dot">.</span></span>
+        </Link>
+        <nav className={`main-nav ${open ? "is-open" : ""}`} aria-label="Navegação principal">
+          <Link href="/" className={!isCatalog && location === "/" ? "active" : ""} onClick={() => setOpen(false)} data-testid="link-home">Início</Link>
+          <Link href="/catalogo" className={isCatalog ? "active" : ""} onClick={() => setOpen(false)} data-testid="link-catalog">Catálogo</Link>
+          <button className="nav-quote" onClick={() => { setLocation("/#fale-com-a-gente"); setOpen(false); }} data-testid="button-header-quote">
+            Fazer orçamento <ArrowUpRight size={15} strokeWidth={2.5} />
+          </button>
+        </nav>
+        <button className="menu-button" onClick={() => setOpen(!open)} aria-label={open ? "Fechar menu" : "Abrir menu"} data-testid="button-mobile-menu">
+          {open ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function WhatsAppButton({ compact = false }: { compact?: boolean }) {
+  return (
+    <a href={waLink("Oi, G72 Plastic! Quero conhecer as opções de personalizados.")} target="_blank" rel="noreferrer" className={`wa-button ${compact ? "compact" : ""}`} data-testid="link-whatsapp-floating" aria-label="Falar com a G72 Plastic pelo WhatsApp">
+      <MessageCircle size={compact ? 18 : 21} />
+      {!compact && <span>Falar no WhatsApp</span>}
+    </a>
+  );
+}
+
+function ProductImage({ product, className = "" }: { product: Product; className?: string }) {
+  return (
+    <div className={`product-image ${product.tone} ${className}`}>
+      <img src={product.image} alt={product.name} loading="lazy" />
+      <span className="image-stamp">G72 / feito por aqui</span>
+    </div>
+  );
+}
+
+function ProductCard({ product }: { product: Product }) {
+  return (
+    <Link href={`/produto/${product.slug}`} className="product-card" data-testid={`card-product-${product.slug}`}>
+      <ProductImage product={product} />
+      <div className="product-card-copy">
+        <div>
+          <p className="eyebrow">{product.category}</p>
+          <h3>{product.name}</h3>
+          <p>{product.note}</p>
+        </div>
+        <span className="round-arrow" aria-hidden="true"><ArrowUpRight size={19} /></span>
+      </div>
+    </Link>
+  );
+}
+
+function Home() {
+  const featured = products.filter((product) => product.featured);
+  return (
+    <div className="site-shell noise">
+      <Meta title="G72 Plastic — personalizados que têm a sua cara" description="Copos, taças, chaveiros, presentes e peças 3D personalizados em São Paulo. Fale com a G72 Plastic pelo WhatsApp." />
+      <Header />
+      <main>
+        <section className="hero container">
+          <div className="hero-copy animate-rise">
+            <p className="eyebrow hero-kicker"><span className="eyebrow-line" /> São Paulo, feito à mão</p>
+            <h1>Objetos<br /><em>com nome.</em><br />Com história.</h1>
+            <p className="hero-description">Personalizados em acrílico e impressos em 3D para acompanhar os seus momentos — ou virar o presente favorito de alguém.</p>
+            <div className="hero-actions">
+              <a href={waLink("Oi, G72 Plastic! Quero fazer um orçamento.")} target="_blank" rel="noreferrer" className="button button-primary" data-testid="link-hero-whatsapp">Quero personalizar <ArrowUpRight size={18} /></a>
+              <Link href="/catalogo" className="button button-quiet" data-testid="link-hero-catalog">Ver catálogo <ArrowDownRight size={18} /></Link>
+            </div>
+          </div>
+          <div className="hero-art animate-float" aria-label="Copo acrílico personalizado G72 Plastic">
+            <div className="hero-circle" />
+            <div className="hero-note">feito<br />pra você<span>.</span></div>
+            <div className="hero-arc" />
+            <img src="/products/tumbler-lia.png" alt="Copo acrílico personalizado com nome" />
+            <span className="hero-side-label">personalização<br />sem receita pronta</span>
+          </div>
+          <div className="hero-bottom-note"><span>01</span><span>deslize para<br />ver de perto</span><ChevronDown size={17} /></div>
+        </section>
+
+        <section className="category-section container" id="categorias">
+          <div className="section-heading">
+            <p className="eyebrow">Por onde começar</p>
+            <h2>Escolha um universo.<br /><em>A gente dá forma.</em></h2>
+            <Link href="/catalogo" className="text-link" data-testid="link-see-all-categories">Ver tudo <ArrowUpRight size={16} /></Link>
+          </div>
+          <div className="category-grid">
+            {categories.map((category) => (
+              <Link href={`/catalogo?categoria=${encodeURIComponent(category.name)}`} className={`category-tile ${category.className}`} key={category.number} data-testid={`link-category-${category.number}`}>
+                <span className="category-number">{category.number}</span>
+                <span className="category-shape" />
+                <div className="category-tile-bottom"><h3>{category.name}</h3><p>{category.label}</p><ArrowUpRight size={20} /></div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="featured-section container">
+          <div className="section-heading featured-heading">
+            <div><p className="eyebrow">Do nosso ateliê</p><h2>Peças para dar<br /><em>vontade de tocar.</em></h2></div>
+            <p className="heading-aside">Tudo começa com uma ideia simples.<br />O resto a gente imprime, recorta<br />e coloca no mundo.</p>
+          </div>
+          <div className="product-grid">
+            {featured.map((product) => <ProductCard product={product} key={product.slug} />)}
+          </div>
+          <Link href="/catalogo" className="catalog-prompt" data-testid="link-home-full-catalog"><span>Explorar o catálogo completo</span><CircleArrowOutUpRight size={20} /></Link>
+        </section>
+
+        <section className="trust-section container">
+          <div className="trust-intro"><p className="eyebrow">Sem carrinho. Sem complicação.</p><h2>Da ideia ao<br /><em>objeto.</em></h2><p>A gente conversa, entende o que você imaginou e faz acontecer. Cada pedido é produzido especialmente para você.</p><a href={waLink("Oi, G72 Plastic! Quero fazer um orçamento.")} target="_blank" rel="noreferrer" className="button button-dark" data-testid="link-trust-whatsapp">Chamar no WhatsApp <ArrowUpRight size={18} /></a></div>
+          <div className="trust-steps">
+            <div className="trust-step"><span>01</span><div><h3>Você conta</h3><p>Nome, cor, quantidade, ocasião. Pode chegar com uma ideia ou só uma vontade.</p></div></div>
+            <div className="trust-step"><span>02</span><div><h3>A gente cria</h3><p>Respondemos com possibilidades, prazo e um orçamento claro para você decidir.</p></div></div>
+            <div className="trust-step"><span>03</span><div><h3>Chega até você</h3><p>Produzimos com cuidado e combinamos a entrega ou retirada em São Paulo.</p></div></div>
+          </div>
+        </section>
+
+        <Footer />
+      </main>
+      <WhatsAppButton />
+    </div>
+  );
+}
+
+function Catalog() {
+  const queryCategory = new URLSearchParams(window.location.search).get("categoria");
+  const initialCategory = categories.some((category) => category.name === queryCategory) ? queryCategory as Category : "Todos";
+  const [selected, setSelected] = useState<"Todos" | Category>(initialCategory);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const visible = useMemo(() => selected === "Todos" ? products : products.filter((product) => product.category === selected), [selected]);
+  return (
+    <div className="site-shell noise">
+      <Meta title="Catálogo — G72 Plastic" description="Explore o catálogo de personalizados da G72 Plastic: copos, taças, canecas, chaveiros, presentes e peças 3D." />
+      <Header />
+      <main className="catalog-page container">
+        <div className="catalog-top animate-rise">
+          <div><p className="eyebrow">Peças, ideias e possibilidades</p><h1>Catálogo<br /><em>G72 Plastic.</em></h1></div>
+          <p>Uma seleção do que já saiu do nosso ateliê. Gostou de uma peça? Ela pode mudar de cor, nome, tamanho e até de propósito.</p>
+        </div>
+        <div className="filter-bar">
+          <div className="filter-scroll">
+            {(["Todos", ...categories.map((category) => category.name)] as const).map((category) => (
+              <button key={category} onClick={() => setSelected(category)} className={selected === category ? "selected" : ""} data-testid={`button-filter-${category === "Todos" ? "all" : category}`}>
+                {category === "Todos" ? "Tudo" : category}
+              </button>
+            ))}
+          </div>
+          <button className="mobile-filter-button" onClick={() => setMenuOpen(!menuOpen)} data-testid="button-mobile-filters">{selected === "Todos" ? "Filtrar" : selected}<ChevronDown size={16} /></button>
+        </div>
+        {menuOpen && <div className="mobile-filter-menu">{(["Todos", ...categories.map((category) => category.name)] as const).map((category) => <button key={category} onClick={() => { setSelected(category); setMenuOpen(false); }} data-testid={`button-mobile-filter-${category}`}>{category}<Check size={16} className={selected === category ? "visible" : ""} /></button>)}</div>}
+        <div className="catalog-result-line"><span>{visible.length} {visible.length === 1 ? "peça" : "peças"} encontradas</span><span className="result-dot" /><span>produzidas em pequenos lotes</span></div>
+        <div className="catalog-grid">{visible.map((product) => <ProductCard product={product} key={product.slug} />)}</div>
+        <section className="catalog-cta"><div><p className="eyebrow">Não encontrou o que imaginou?</p><h2>Cria com a gente.</h2></div><a href={waLink("Oi, G72 Plastic! Tenho uma ideia e queria criar uma peça personalizada.")} target="_blank" rel="noreferrer" className="button button-primary" data-testid="link-catalog-custom">Falar da minha ideia <ArrowUpRight size={18} /></a></section>
+      </main>
+      <Footer />
+      <WhatsAppButton />
+    </div>
+  );
+}
+
+function ProductDetail() {
+  const [, params] = useRoute("/produto/:slug");
+  const [qty, setQty] = useState(1);
+  const [color, setColor] = useState("Quero conversar sobre as cores");
+  const product = products.find((item) => item.slug === params?.slug);
+  if (!product) return <NotFound />;
+  const message = `Oi, G72 Plastic! Tenho interesse em ${product.name}${qty > 1 ? ` (${qty} unidades)` : ""}. ${color}. Pode me passar um orçamento?`;
+  return (
+    <div className="site-shell noise">
+      <Meta title={`${product.name} — G72 Plastic`} description={`${product.description} Personalize sua peça com a G72 Plastic em São Paulo.`} />
+      <Header />
+      <main className="detail-page container">
+        <Link href="/catalogo" className="back-link" data-testid="link-back-catalog"><ArrowLeft size={16} /> Voltar para o catálogo</Link>
+        <div className="detail-layout">
+          <ProductImage product={product} className="detail-image" />
+          <div className="detail-copy animate-rise">
+            <p className="eyebrow">{product.category}</p>
+            <h1>{product.name}</h1>
+            <p className="detail-lede">{product.description}</p>
+            <div className="detail-rule" />
+            <div className="detail-options">
+              <div className="option-row"><span>Quantidade</span><div className="quantity"><button onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Diminuir quantidade" data-testid="button-decrease-quantity"><Minus size={15} /></button><strong>{qty.toString().padStart(2, "0")}</strong><button onClick={() => setQty(qty + 1)} aria-label="Aumentar quantidade" data-testid="button-increase-quantity"><Plus size={15} /></button></div></div>
+              <div className="option-row"><span>Personalização</span><select value={color} onChange={(event) => setColor(event.target.value)} aria-label="Escolha a personalização" data-testid="select-personalization"><option>Quero conversar sobre as cores</option><option>Já tenho nome e cor definidos</option><option>Quero uma sugestão da G72</option></select></div>
+            </div>
+            <ul className="detail-list">{product.details.map((detail) => <li key={detail}><Check size={15} /> {detail}</li>)}</ul>
+            <a href={waLink(message)} target="_blank" rel="noreferrer" className="button button-primary detail-button" data-testid="link-product-whatsapp">Pedir orçamento desta peça <MessageCircle size={18} /></a>
+            <p className="detail-footnote"><Clock3 size={15} /> Resposta rápida em horário comercial. Sem compromisso.</p>
+          </div>
+        </div>
+        <div className="detail-bottom"><span>feito em pequenos lotes</span><span>personalizado em São Paulo</span><span>G72 Plastic, desde 2021</span></div>
+      </main>
+      <Footer />
+      <WhatsAppButton compact />
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="site-footer" id="fale-com-a-gente">
+      <div className="container footer-main">
+        <div><p className="eyebrow">Fale com a gente</p><h2>Tem uma ideia<br /><em>na cabeça?</em></h2></div>
+        <div className="footer-contact"><p>Pedidos, dúvidas e projetos personalizados<br />respondidos pelo WhatsApp.</p><a href={waLink("Oi, G72 Plastic! Vim pelo site.")} target="_blank" rel="noreferrer" className="footer-whatsapp" data-testid="link-footer-whatsapp">Abrir conversa <ArrowUpRight size={18} /></a></div>
+      </div>
+      <div className="container footer-bottom"><Link href="/" className="footer-brand" data-testid="link-footer-brand">G72 Plastic<span>.</span></Link><span>São Paulo, SP</span><a href="https://instagram.com/g72plastic" target="_blank" rel="noreferrer" data-testid="link-instagram"><Instagram size={17} /> @g72plastic</a><span>© 2024 G72 Plastic</span></div>
+    </footer>
+  );
+}
+
+function NotFound() {
+  return <div className="site-shell"><Header /><main className="not-found container"><p className="eyebrow">Ops, essa página não existe</p><h1>Vamos voltar<br /><em>para o começo?</em></h1><Link href="/" className="button button-primary" data-testid="link-not-found-home">Ir para o início <ArrowUpRight size={18} /></Link></main></div>;
+}
+
+function Router() {
+  return <ErrorBoundary resetKey={window.location.pathname}><Switch><Route path="/" component={Home} /><Route path="/catalogo" component={Catalog} /><Route path="/produto/:slug" component={ProductDetail} /><Route component={NotFound} /></Switch></ErrorBoundary>;
+}
+
+function App() {
+  return <QueryClientProvider client={new QueryClient()}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+}
+
+export default App;
