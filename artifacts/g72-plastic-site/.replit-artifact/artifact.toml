@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "G72 Plastic"
+description = "Vitrine digital enxuta para produtos personalizados e impressão 3D, com catálogo e orçamento pelo WhatsApp."
+version = "1.0.0"
+id = "artifacts/g72-plastic-site"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18468
+
+[services.development]
+run = "pnpm --filter @workspace/g72-plastic-site run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/g72-plastic-site", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/g72-plastic-site/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18468"
+BASE_PATH = "/"
